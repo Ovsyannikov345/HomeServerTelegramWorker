@@ -1,7 +1,8 @@
 using HomeServerTelegramWorker.Configuration;
 using HomeServerTelegramWorker.Extensions;
-using HomeServerTelegramWorker.Telegram.Handlers;
-using HomeServerTelegramWorker.Telegram.Handlers.CommandHandlers;
+using HomeServerTelegramWorker.Telegram;
+using HomeServerTelegramWorker.Telegram.CallbackQueryHandlers;
+using HomeServerTelegramWorker.Telegram.CommandHandlers;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
@@ -49,6 +50,7 @@ public sealed class TelegramPollingWorker(
             _ => null
         };
 
+        // TODO add auth message handler
         if (chatId is null)
         {
             logger.LogWarning("Unauthorized access attempt from unknown chat.");
@@ -63,13 +65,15 @@ public sealed class TelegramPollingWorker(
             return;
         }
 
-        await using var scope = scopeFactory.CreateAsyncScope();
-
         try
         {
-            if (update.IsCommand())
+            if (update.TryExtractCommand(out var command))
             {
-                await HandleCommand();
+                await HandleCommand(command, ct);
+            }
+            else if (update.TryExtractCallbackQuery(out var callbackQuery))
+            {
+                await HandleCallbackQuery(callbackQuery, ct);
             }
             else
             {
@@ -80,21 +84,39 @@ public sealed class TelegramPollingWorker(
         {
             logger.LogError(ex, "Error handling update {UpdateId}", update.Id);
         }
+    }
 
-        async Task HandleCommand()
+    async Task HandleCommand(Message message, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+
+        var commandHandlers = scope.ServiceProvider.GetServices<ICommandHandler>();
+
+        if (commandHandlers.FirstOrDefault(h => h.CanHandle(message)) is { } capableHandler)
         {
-            var commandHandlers = scope.ServiceProvider.GetServices<ICommandHandler>();
+            await capableHandler.Handle(message, ct);
+        }
+        else
+        {
+            var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackHandler>();
 
-            if (commandHandlers.FirstOrDefault(h => h.CanHandle(update)) is { } capableHandler)
-            {
-                await capableHandler.Handle(update, ct);
-            }
-            else
-            {
-                var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackHandler>();
+            await fallbackHandler.Handle(message, ct);
+        }
+    }
 
-                await fallbackHandler.Handle(update, ct);
-            }
+    async Task HandleCallbackQuery(CallbackQuery callbackQuery, CancellationToken ct)
+    {
+        await using var scope = scopeFactory.CreateAsyncScope();
+
+        var callbackQueryHandlers = scope.ServiceProvider.GetServices<ICallbackQueryHandler>();
+
+        if (callbackQueryHandlers.FirstOrDefault(h => h.CanHandle(callbackQuery)) is { } capableHandler)
+        {
+            await capableHandler.Handle(callbackQuery, ct);
+        }
+        else
+        {
+            // TODO figure out the handling approach.
         }
     }
 

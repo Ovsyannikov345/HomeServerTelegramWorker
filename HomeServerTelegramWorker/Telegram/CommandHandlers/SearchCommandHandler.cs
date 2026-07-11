@@ -1,11 +1,12 @@
 ﻿using HomeServerTelegramWorker.Seerr;
+using HomeServerTelegramWorker.Telegram.CallbackQueryHandlers.Payloads;
 using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace HomeServerTelegramWorker.Telegram.Handlers.CommandHandlers;
+namespace HomeServerTelegramWorker.Telegram.CommandHandlers;
 
 public sealed class SearchCommandHandler(
     ITelegramBotClient telegramBotClient,
@@ -58,14 +59,20 @@ public sealed class SearchCommandHandler(
 
         var caption = new StringBuilder();
         caption.AppendLine($"🎬 <b>{media.DisplayTitle} ({media.Year})</b>");
-        caption.AppendLine($"<i>{media.MediaType.ToUpper()}</i>\n");
+        caption.AppendLine($"<i>{media.DisplayType.ToUpper()}</i>\n");
         caption.AppendLine(media.Overview.Length > 800 ? media.Overview[..800] + "..." : media.Overview);
+
+        var downloadQueryPayload = new RequestMediaPayload
+        {
+            MediaId = media.Id,
+            MediaType = media.MediaType
+        };
 
         var buttons = new List<InlineKeyboardButton>
         {
             InlineKeyboardButton.WithCallbackData(
             text: "⬇️ Download",
-            callbackData: $"SEERR_REQ_{media.MediaType}_{media.Id}")
+            callbackData: downloadQueryPayload.ToCallbackQueryString())
         };
 
         // TODO implement "Next" button and pagination
@@ -73,7 +80,7 @@ public sealed class SearchCommandHandler(
         {
             buttons.Add(InlineKeyboardButton.WithCallbackData(
                 text: "➡️ Next",
-                callbackData: "SEERR_NEXT"));
+                callbackData: "dummy payload"));
         }
 
         var keyboard = new InlineKeyboardMarkup(buttons);

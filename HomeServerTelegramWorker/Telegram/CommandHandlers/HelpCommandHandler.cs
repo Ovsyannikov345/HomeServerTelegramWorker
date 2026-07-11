@@ -1,10 +1,9 @@
-﻿using System.Collections;
-using System.Text;
+﻿using System.Text;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace HomeServerTelegramWorker.Telegram.Handlers.CommandHandlers;
+namespace HomeServerTelegramWorker.Telegram.CommandHandlers;
 
 public sealed class HelpCommandHandler(
     ITelegramBotClient telegramBotClient,

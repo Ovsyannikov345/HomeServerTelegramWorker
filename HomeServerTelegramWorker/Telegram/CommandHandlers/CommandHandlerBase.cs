@@ -1,7 +1,6 @@
 ﻿using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
-namespace HomeServerTelegramWorker.Telegram.Handlers.CommandHandlers;
+namespace HomeServerTelegramWorker.Telegram.CommandHandlers;
 
 public abstract class CommandHandlerBase : ICommandHandler
 {
@@ -11,16 +10,15 @@ public abstract class CommandHandlerBase : ICommandHandler
 
     public abstract string? CommandExample { get; }
 
-    public virtual bool CanHandle(Update update)
+    public virtual bool CanHandle(Message message)
     {
-        if (update.Type is not UpdateType.Message
-            || update.Message?.Text is null
-            || !update.Message.Text.StartsWith('/'))
+        if (message.Text is null
+            || !message.Text.StartsWith('/'))
         {
             return false;
         }
 
-        var parts = update.Message.Text[1..].Split(' ');
+        var parts = message.Text[1..].Split(' ');
 
         // Remove bot name if present (e.g., /command@botname)
         var command = parts[0].Split('@')[0];
@@ -33,10 +31,10 @@ public abstract class CommandHandlerBase : ICommandHandler
         return true;
     }
 
-    public async Task Handle(Update update, CancellationToken ct)
+    public async Task Handle(Message message, CancellationToken ct)
     {
         // TODO logs here
-        await ProcessUpdate(update.Message!, ct);
+        await ProcessUpdate(message, ct);
         // TODO logs here
     }
 

@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using HomeServerTelegramWorker.Seerr.Constants;
+using System.Text.Json.Serialization;
 
 namespace HomeServerTelegramWorker.Seerr.Dto;
 
@@ -35,6 +36,8 @@ public class SeerrMedia
     public string? PosterPath { get; set; }
 
     public string DisplayTitle => Title ?? Name ?? "Unknown";
+
+    public string DisplayType => MediaType is MediaTypes.Movie ? "Movie" : "Series";
 
     public string Year => (ReleaseDate ?? FirstAirDate ?? "    ").Length >= 4
         ? (ReleaseDate ?? FirstAirDate ?? "    ")[..4]

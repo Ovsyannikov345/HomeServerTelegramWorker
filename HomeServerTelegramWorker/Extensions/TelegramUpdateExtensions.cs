@@ -1,14 +1,38 @@
-﻿using Telegram.Bot.Types;
+﻿using System.Diagnostics.CodeAnalysis;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 namespace HomeServerTelegramWorker.Extensions;
 
 public static class TelegramUpdateExtensions
 {
-    public static bool IsCommand(this Update update)
+    public static bool TryExtractCommand(this Update update, [NotNullWhen(true)] out Message? command)
     {
-        return update.Type is UpdateType.Message
+        command = null;
+
+        if (update.Type is UpdateType.Message
             && update.Message?.Text is not null
-            && update.Message.Text.StartsWith('/');
+            && update.Message.Text.StartsWith('/'))
+        {
+            command = update.Message;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public static bool TryExtractCallbackQuery(this Update update, [NotNullWhen(true)] out CallbackQuery? callbackQuery)
+    {
+        callbackQuery = null;
+
+        if (update.Type is UpdateType.CallbackQuery && update.CallbackQuery is not null)
+        {
+            callbackQuery = update.CallbackQuery;
+
+            return true;
+        }
+
+        return false;
     }
 }

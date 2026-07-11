@@ -3,8 +3,9 @@ using HomeServerTelegramWorker.Background;
 using HomeServerTelegramWorker.Configuration;
 using HomeServerTelegramWorker.Seerr;
 using HomeServerTelegramWorker.Seerr.Handlers;
-using HomeServerTelegramWorker.Telegram.Handlers;
-using HomeServerTelegramWorker.Telegram.Handlers.CommandHandlers;
+using HomeServerTelegramWorker.Telegram;
+using HomeServerTelegramWorker.Telegram.CallbackQueryHandlers;
+using HomeServerTelegramWorker.Telegram.CommandHandlers;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
@@ -29,8 +30,12 @@ services.AddOptions<SeerrSettings>()
 // HTTP Clients
 services.AddTransient<SeerrAuthorizationHandler>();
 
-services.AddHttpClient<ISeerrClient, SeerrClient>()
-        .AddHttpMessageHandler<SeerrAuthorizationHandler>();
+services.AddHttpClient<ISeerrClient, SeerrClient>((serviceProvider, client) =>
+{
+    var seerSettings = serviceProvider.GetRequiredService<IOptionsMonitor<SeerrSettings>>();
+
+    client.BaseAddress = new Uri(seerSettings.CurrentValue.BaseUrl, UriKind.Absolute);
+}).AddHttpMessageHandler<SeerrAuthorizationHandler>();
 
 // Telegram
 services.AddSingleton<ITelegramBotClient>(sp =>
@@ -43,6 +48,8 @@ services.AddSingleton<ITelegramBotClient>(sp =>
 services
     .AddScoped<ICommandHandler, HelpCommandHandler>()
     .AddScoped<ICommandHandler, SearchCommandHandler>();
+
+services.AddScoped<ICallbackQueryHandler, RequestMediaQueryHandler>();
 
 services.AddScoped<IFallbackHandler, FallbackHandler>();
 
