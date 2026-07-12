@@ -1,3 +1,6 @@
 <Solution>
-  <Project Path="HomeServerTelegramWorker/HomeServerTelegramWorker.csproj" />
+  <Project Path="HomeLabNotifier.Api/HomeLabNotifier.Api.csproj" />
+  <Project Path="HomeLabNotifier.Application/HomeLabNotifier.Application.csproj" Id="d6386fb4-818c-4c96-98a4-4277d3414c79" />
+  <Project Path="HomeLabNotifier.Domain/HomeLabNotifier.Domain.csproj" Id="d012a839-1e8d-4565-a4ed-4d858e7950fa" />
+  <Project Path="HomeLabNotifier.Infrastructure/HomeLabNotifier.Infrastructure.csproj" Id="82f01ef3-f1dd-4bdf-8079-f5abff7efbe8" />
 </Solution>
