@@ -1,4 +1,7 @@
-﻿using Telegram.Bot;
+﻿using HomeLabCore.Application.Telegram.Configuration;
+using HomeLabCore.Application.Telegram.Exceptions;
+using Microsoft.Extensions.Options;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -17,9 +20,16 @@ public interface ICommandHandler
     public Task Handle(Message message, CancellationToken ct);
 }
 
-public abstract class CommandHandlerBase(ITelegramBotClient telegramBotClient) : ICommandHandler
+internal abstract class CommandHandlerBase(
+    ITelegramBotClient telegramBotClient,
+    IOptionsSnapshot<TelegramSettings> options)
+    : ICommandHandler
 {
-    protected ITelegramBotClient BotClient = telegramBotClient;
+    protected readonly ITelegramBotClient BotClient = telegramBotClient;
+
+    protected readonly TelegramSettings Settings = options.Value;
+
+    public abstract bool RequiresAuthorization { get; }
 
     public abstract string CommandName { get; }
 
@@ -51,22 +61,82 @@ public abstract class CommandHandlerBase(ITelegramBotClient telegramBotClient) :
     // TODO logs here
     public async Task Handle(Message message, CancellationToken ct)
     {
+        Message? botResponseMessage = null;
+
         try
         {
-            await ProcessUpdate(message, ct);
-        }
-        // TODO add correrlation id to message for debugging
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            await BotClient.SendMessage(
+            var hasAccess = message.From?.Id is { } userId && Settings.UserIdWhitelist.Contains(userId);
+
+            if (RequiresAuthorization && !hasAccess)
+            {
+                await BotClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: $"❌ **Access denied.**",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+
+                return;
+            }
+
+            // TODO change icon
+            // TODO this should be controlled by handlers. Sometimes there's no need for message
+            botResponseMessage = await BotClient.SendMessage(
                 chatId: message.Chat.Id,
-                text: $"Something went wrong while processing the command :(",
+                text: "🔍 **Processing request...**",
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
+
+            await ProcessUpdate(message, botResponseMessage, ct);
+        }
+        // TODO add correrlation id to message for debugging
+        // TODO refactor
+        catch (CommandProcessingException ex)
+        {
+            if (botResponseMessage is null)
+            {
+                await BotClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: $"Something went wrong while processing the command :(",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+            }
+            else
+            {
+                var errorMessage = ex.ShowMessageToUser
+                    ? $"❌ **{ex.Message}**"
+                    : "❌ **Something went wrong while processing the command :(**";
+
+                await BotClient.EditMessageText(
+                    chatId: botResponseMessage.Chat.Id,
+                    messageId: botResponseMessage.MessageId,
+                    text: errorMessage,
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            if (botResponseMessage is null)
+            {
+                await BotClient.SendMessage(
+                    chatId: message.Chat.Id,
+                    text: "Something went wrong while processing the command :(",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+            }
+            else
+            {
+                await BotClient.EditMessageText(
+                    chatId: botResponseMessage.Chat.Id,
+                    messageId: botResponseMessage.MessageId,
+                    text: "❌ **Something went wrong while processing the command :(**",
+                    parseMode: ParseMode.Markdown,
+                    cancellationToken: ct);
+            }
         }
     }
 
-    protected abstract Task ProcessUpdate(Message message, CancellationToken ct);
+    protected abstract Task ProcessUpdate(Message message, Message botResponseMessage, CancellationToken ct);
 
     protected static string? GetCommandArgument(Message message)
     {

@@ -11,7 +11,7 @@ public static class DependencyInjection
 
         return applicationBuilder.Services
             .AddInfrastructureServices(configuration)
-            .AddApplicationServices()
+            .AddApplicationServices(configuration)
             .AddApiServices();
     }
 

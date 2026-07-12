@@ -1,23 +1,28 @@
 ﻿using HomeLabCore.Application.Interfaces.Clients;
 using HomeLabCore.Application.Interfaces.Database;
+using HomeLabCore.Application.Telegram.Configuration;
+using HomeLabCore.Application.Telegram.Exceptions;
 using HomeLabCore.Application.Telegram.Services;
 using HomeLabCore.Domain.Entities.Media;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace HomeLabCore.Application.Telegram.CommandHandlers;
 
-public sealed class SearchCommandHandler(
+internal sealed class SearchCommandHandler(
     IApplicationDbContext dbContext,
     ITelegramBotClient telegramBotClient,
     IMediaManagerClient mediaManagerClient,
     IMessageRenderer messageRenderer,
+    IOptionsSnapshot<TelegramSettings> options,
     ILogger<SearchCommandHandler> logger)
-    : CommandHandlerBase(telegramBotClient), ICommandHandler
+    : CommandHandlerBase(telegramBotClient, options)
 {
     private const int SearchResultsTotalCount = 20;
+
+    public override bool RequiresAuthorization => true;
 
     public override string CommandName => "search";
 
@@ -25,32 +30,16 @@ public sealed class SearchCommandHandler(
 
     public override string? CommandExample => $"/{CommandName} The Matrix";
 
-    protected override async Task ProcessUpdate(Message message, CancellationToken ct)
+    protected override async Task ProcessUpdate(Message message, Message botResponseMessage, CancellationToken ct)
     {
         // TODO handle already downloaded
         // TODO handle season selection + already downloaded seasons
-
-        // TODO do all handling lifecycle in base class
-        var loadingMessage = await BotClient.SendMessage(
-            chatId: message.Chat.Id,
-            text: "🔍 Searching media...",
-            cancellationToken: ct);
-
-        await Task.Delay(1000, ct);
 
         var searchTerm = GetCommandArgument(message);
 
         if (searchTerm is null)
         {
-            // TODO throw exception and handle in base class
-            await BotClient.EditMessageText(
-                    chatId: message.Chat.Id,
-                    messageId: loadingMessage.MessageId,
-                    text: $"❌ Please provide a movie name. Example: `{CommandExample}`",
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: ct);
-
-            return;
+            throw new CommandProcessingException($"Please provide a movie name. Example: `{CommandExample}`", showToUser: true);
         }
 
         await Task.Delay(2000, ct);
@@ -64,14 +53,7 @@ public sealed class SearchCommandHandler(
 
         if (searchResults.Count == 0)
         {
-            // TODO throw exception and handle in base class
-            await BotClient.EditMessageText(
-                    chatId: message.Chat.Id,
-                    messageId: loadingMessage.MessageId,
-                    text: $"❌ No results found for \"{searchTerm}\".",
-                    cancellationToken: ct);
-
-            return;
+            throw new CommandProcessingException($"No results found for \"{searchTerm}\"", showToUser: true);
         }
 
         var searchSnapshot = new MediaSearchSnapshot
@@ -101,8 +83,8 @@ public sealed class SearchCommandHandler(
                 ct: ct);
 
         await BotClient.DeleteMessage(
-            chatId: message.Chat.Id,
-            messageId: loadingMessage.MessageId,
+            chatId: botResponseMessage.Chat.Id,
+            messageId: botResponseMessage.MessageId,
             cancellationToken: ct);
     }
 }

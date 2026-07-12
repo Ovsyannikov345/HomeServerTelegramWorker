@@ -1,12 +1,10 @@
 ﻿using HomeLabCore.Application.Telegram;
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 using HomeLabCore.Application.Telegram.CommandHandlers;
-using HomeLabCore.Infrastructure.Telegram.Configuration;
 using HomeLabCore.Infrastructure.Telegram.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
@@ -14,10 +12,10 @@ using Telegram.Bot.Types.Enums;
 
 namespace HomeLabCore.Infrastructure.Telegram;
 
+// TODO this class should not do so much. It's only infrastructure!
 internal sealed class TelegramPollingWorker(
     IServiceScopeFactory scopeFactory,
     ITelegramBotClient telegramBotClient,
-    IOptionsMonitor<TelegramSettings> options,
     ILogger<TelegramPollingWorker> logger)
     : BackgroundService
 {
@@ -46,28 +44,6 @@ internal sealed class TelegramPollingWorker(
 
     private async Task HandleUpdate(ITelegramBotClient bot, Update update, CancellationToken ct)
     {
-        long? chatId = update.Type switch
-        {
-            UpdateType.Message => update.Message?.Chat.Id,
-            UpdateType.CallbackQuery => update.CallbackQuery?.Message?.Chat.Id,
-            _ => null
-        };
-
-        // TODO add auth message handler
-        if (chatId is null)
-        {
-            logger.LogWarning("Unauthorized access attempt from unknown chat.");
-
-            return;
-        }
-
-        if (!options.CurrentValue.ChatIdWhitelist.Any(id => id == chatId.Value))
-        {
-            logger.LogWarning("Unauthorized access attempt from Chat ID: {ChatId}", chatId);
-
-            return;
-        }
-
         try
         {
             if (update.TryExtractCommand(out var command))

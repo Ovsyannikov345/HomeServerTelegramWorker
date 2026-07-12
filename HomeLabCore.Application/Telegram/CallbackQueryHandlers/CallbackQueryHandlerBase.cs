@@ -1,37 +1,55 @@
 ﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
+using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Exceptions;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TelegramTypes = Telegram.Bot.Types;
 
 namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
 public interface ICallbackQueryHandler
 {
-    public bool CanHandle(TelegramTypes.CallbackQuery callbackQuery);
+    public bool CanHandle(CallbackQuery callbackQuery);
 
-    public Task Handle(TelegramTypes.CallbackQuery callbackQuery, CancellationToken ct);
+    public Task Handle(CallbackQuery callbackQuery, CancellationToken ct);
 }
 
-public abstract class CallbackQueryHandlerBase<TPayload>(ITelegramBotClient telegramBotClient) : ICallbackQueryHandler
+internal abstract class CallbackQueryHandlerBase<TPayload>(
+    ITelegramBotClient telegramBotClient, 
+    IOptionsSnapshot<TelegramSettings> options) 
+    : ICallbackQueryHandler 
     where TPayload : ICallbackQueryPayload<TPayload>
 {
     protected readonly ITelegramBotClient BotClient = telegramBotClient;
 
+    protected readonly TelegramSettings Settings = options.Value;
+
+    protected abstract bool RequiresAuthorization { get; }
+
     protected abstract string QueryPrefix { get; }
 
-    public bool CanHandle(TelegramTypes.CallbackQuery callbackQuery)
+    public bool CanHandle(CallbackQuery callbackQuery)
     {
         return callbackQuery.Data is not null
             && callbackQuery.Data.StartsWith(QueryPrefix);
     }
 
-    public async Task Handle(TelegramTypes.CallbackQuery callbackQuery, CancellationToken ct)
+    public async Task Handle(CallbackQuery callbackQuery, CancellationToken ct)
     {
         // TODO add logging
         try
         {
-            await BotClient.AnswerCallbackQuery(callbackQuery.Id, "Processing...", cancellationToken: ct);
+            var hasAccess = callbackQuery.From?.Id is { } userId && Settings.UserIdWhitelist.Contains(userId);
+
+            if (RequiresAuthorization && !hasAccess)
+            {
+                await BotClient.AnswerCallbackQuery(callbackQuery.Id, "Access denied.", cancellationToken: ct);
+
+                return;
+            }
+
+            await BotClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
 
             if (callbackQuery.Data is null)
             {
@@ -86,5 +104,5 @@ public abstract class CallbackQueryHandlerBase<TPayload>(ITelegramBotClient tele
         }
     }
 
-    protected abstract Task ProcessCallbackQuery(TelegramTypes.CallbackQuery callbackQuery, TPayload payload, CancellationToken ct);
+    protected abstract Task ProcessCallbackQuery(CallbackQuery callbackQuery, TPayload payload, CancellationToken ct);
 }

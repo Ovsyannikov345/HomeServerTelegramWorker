@@ -1,7 +1,9 @@
 ﻿using HomeLabCore.Application.Interfaces.Clients;
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
+using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Constants;
 using HomeLabCore.Application.Telegram.Exceptions;
+using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -9,12 +11,15 @@ using Telegram.Bot.Types.Enums;
 namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
 // TODO add logging
-public sealed class RequestMediaQueryHandler(
+internal sealed class RequestMediaQueryHandler(
     ITelegramBotClient telegramBotClient,
-    IMediaManagerClient mediaManagerClient) 
-    : CallbackQueryHandlerBase<RequestMediaPayload>(telegramBotClient), ICallbackQueryHandler
+    IMediaManagerClient mediaManagerClient,
+    IOptionsSnapshot<TelegramSettings> options) 
+    : CallbackQueryHandlerBase<RequestMediaPayload>(telegramBotClient, options), ICallbackQueryHandler
 {
     protected override string QueryPrefix => CallbackQueryConstants.Prefixes.RequestMedia;
+
+    protected override bool RequiresAuthorization => true;
 
     protected override async Task ProcessCallbackQuery(CallbackQuery callbackQuery, RequestMediaPayload payload, CancellationToken ct)
     {

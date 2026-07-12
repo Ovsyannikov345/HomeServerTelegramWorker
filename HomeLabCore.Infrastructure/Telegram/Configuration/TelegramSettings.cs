@@ -8,6 +8,4 @@ internal sealed record TelegramSettings
 
     [Required(AllowEmptyStrings = false)]
     public required string BotToken { get; init; }
-
-    public required long[] ChatIdWhitelist { get; init; }
 }
