@@ -1,9 +1,14 @@
 ﻿using HomeLabCore.Application.Interfaces.Clients;
+using HomeLabCore.Application.Interfaces.Database;
+using HomeLabCore.Infrastructure.Common.Constants;
+using HomeLabCore.Infrastructure.Database;
+using HomeLabCore.Infrastructure.Database.Interceptors;
 using HomeLabCore.Infrastructure.Seerr;
 using HomeLabCore.Infrastructure.Seerr.Configuration;
 using HomeLabCore.Infrastructure.Seerr.Handlers;
 using HomeLabCore.Infrastructure.Telegram;
 using HomeLabCore.Infrastructure.Telegram.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -47,6 +52,18 @@ public static class DependencyInjection
 
         // Background Services
         services.AddHostedService<TelegramPollingWorker>();
+
+        // Database
+        services.AddSingleton<AuditableEntityInterceptor>();
+
+        services.AddDbContext<IApplicationDbContext, ApplicationDbContext>((sp, options) =>
+        {
+            var interceptor = sp.GetRequiredService<AuditableEntityInterceptor>();
+
+            options
+                .UseNpgsql(configuration.GetConnectionString(ConnectionStringNames.Database))
+                .AddInterceptors(interceptor);
+        });
 
         return services;
     }
