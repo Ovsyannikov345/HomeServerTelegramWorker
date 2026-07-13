@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="Dockerfile" />
+  </Folder>
   <Project Path="HomeLabCore.Api/HomeLabCore.Api.csproj" />
   <Project Path="HomeLabCore.Application/HomeLabCore.Application.csproj" />
   <Project Path="HomeLabCore.Domain/HomeLabCore.Domain.csproj" />

@@ -11,6 +11,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-await app.InitializeApplication();
+await app
+    .MapEndpoints()
+    .InitializeApplication();
 
 await app.RunAsync();

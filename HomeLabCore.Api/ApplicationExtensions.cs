@@ -1,9 +1,19 @@
-﻿using HomeLabCore.Application.Interfaces;
+﻿using HomeLabCore.Api.Endpoints;
+using HomeLabCore.Application.Interfaces;
 
 namespace HomeLabCore.Api;
 
 public static class ApplicationExtensions
 {
+    public static WebApplication MapEndpoints(this WebApplication application)
+    {
+        application
+            .MapGroup("/api")
+            .MapHealthEndpoints();
+
+        return application;
+    }
+
     public static async Task InitializeApplication(this WebApplication app)
     {
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
