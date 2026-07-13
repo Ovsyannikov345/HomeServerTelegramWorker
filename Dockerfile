@@ -24,11 +24,10 @@ RUN dotnet restore "./HomeLabCore.Api/HomeLabCore.Api.csproj"
 COPY . .
 
 WORKDIR "/src/HomeLabCore.Api"
-RUN dotnet build "./HomeLabCore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./HomeLabCore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./HomeLabCore.Api.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
 
 FROM base AS final
 WORKDIR /app
