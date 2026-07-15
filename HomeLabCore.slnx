@@ -2,6 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path=".dockerignore" />
     <File Path=".github/workflows/publish.yml" />
+    <File Path=".github/workflows/verify_pull_request.yml" />
     <File Path="CI.Dockerfile" />
     <File Path="Dockerfile" />
   </Folder>

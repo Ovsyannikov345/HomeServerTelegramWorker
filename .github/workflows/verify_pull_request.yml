@@ -40,7 +40,7 @@ jobs:
           dotnet sonarscanner begin \
             /k:"Ovsyannikov345_HomeLabCore" \
             /o:"ovsyannikov345" \
-            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.token="$SONAR_TOKEN" \
             /d:sonar.host.url="https://sonarcloud.io"
 
       - name: Build
@@ -52,4 +52,4 @@ jobs:
       - name: End Sonar Scan
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
