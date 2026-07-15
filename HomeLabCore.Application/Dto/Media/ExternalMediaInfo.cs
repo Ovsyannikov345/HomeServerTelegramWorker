@@ -13,6 +13,8 @@ public sealed record ExternalMediaInfo
 
     public required string Overview { get; init; }
 
+    public required MediaStatus Status { get; init; }
+
     public string? ReleaseDate { get; init; }
 
     public string? FirstAirDate { get; init; }
@@ -27,6 +29,7 @@ public sealed record ExternalMediaInfo
             MediaType = snapshot.MediaType,
             Title = snapshot.Title,
             Overview = snapshot.Overview,
+            Status = snapshot.Status,
             ReleaseDate = snapshot.ReleaseDate,
             FirstAirDate = snapshot.FirstAirDate,
             PosterPath = snapshot.PosterPath

@@ -65,6 +65,7 @@ internal sealed class SearchCommandHandler(
                 MediaType = m.MediaType,
                 Title = m.Title,
                 Overview = m.Overview,
+                Status = m.Status,
                 ReleaseDate = m.ReleaseDate,
                 FirstAirDate = m.FirstAirDate,
                 PosterPath = m.PosterPath
