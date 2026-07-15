@@ -3,6 +3,7 @@ using HomeLabCore.Application.Interfaces.Clients;
 using HomeLabCore.Domain.Constants.Enums;
 using HomeLabCore.Infrastructure.Seerr.Configuration;
 using HomeLabCore.Infrastructure.Seerr.Constants;
+using HomeLabCore.Infrastructure.Seerr.Constants.Enums;
 using HomeLabCore.Infrastructure.Seerr.Contracts;
 using HomeLabCore.Infrastructure.Seerr.Externsions;
 using Microsoft.AspNetCore.WebUtilities;
@@ -49,6 +50,7 @@ internal sealed class SeerrClient(HttpClient httpClient, IOptionsMonitor<SeerrSe
                         MediaType = MediaTypes.ConvertToDomain(m.MediaType),
                         Title = m.Title ?? m.Name ?? "Unknown",
                         Overview = m.Overview,
+                        Status = m.SeerMetadata?.Status.MapToInternalStatus() ?? MediaStatus.Unknown,
                         ReleaseDate = m.ReleaseDate,
                         FirstAirDate = m.FirstAirDate,
                         PosterPath = string.IsNullOrWhiteSpace(m.PosterPath)

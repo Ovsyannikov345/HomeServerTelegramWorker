@@ -19,6 +19,8 @@ public sealed record MediaSearchSnapshotEntry
 
     public required string Overview { get; init; }
 
+    public required MediaStatus Status { get; init; }
+
     public string? ReleaseDate { get; init; }
 
     public string? FirstAirDate { get; init; }

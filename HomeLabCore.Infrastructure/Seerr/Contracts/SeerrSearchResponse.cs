@@ -1,4 +1,6 @@
-﻿using System.Text.Json.Serialization;
+﻿using HomeLabCore.Infrastructure.Seerr.Constants;
+using HomeLabCore.Infrastructure.Seerr.Constants.Enums;
+using System.Text.Json.Serialization;
 
 namespace HomeLabCore.Infrastructure.Seerr.Contracts;
 
@@ -42,4 +44,13 @@ internal sealed record SeerrMedia
 
     [JsonPropertyName("posterPath")]
     public string? PosterPath { get; init; }
+
+    [JsonPropertyName("mediaInfo")]
+    public SeerMediaMetadata? SeerMetadata { get; init; }
+}
+
+internal sealed record SeerMediaMetadata
+{
+    [JsonPropertyName("status")]
+    public SeerrMediaStatus Status { get; init; } = SeerrMediaStatus.Unknown;
 }
