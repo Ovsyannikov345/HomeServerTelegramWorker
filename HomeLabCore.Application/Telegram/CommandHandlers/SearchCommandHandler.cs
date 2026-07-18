@@ -22,13 +22,13 @@ internal sealed class SearchCommandHandler(
 {
     private const int SearchResultsTotalCount = 20;
 
-    public override bool RequiresAuthorization => true;
-
-    public override string CommandName => "search";
-
-    public override string CommandDescription => "Searches the requested movie or series";
-
-    public override string? CommandExample => $"/{CommandName} The Matrix";
+    public override CommandHandlerOptions HandlerOptions => new()
+    {
+        RequiresAuthorization = true,
+        CommandName = "search",
+        CommandDescription = "Searches the requested movie or series",
+        CommandExample = $"/search The Matrix"
+    };
 
     protected override async Task ProcessUpdate(Message message, Message botResponseMessage, CancellationToken ct)
     {
@@ -36,7 +36,7 @@ internal sealed class SearchCommandHandler(
 
         if (searchTerm is null)
         {
-            throw new CommandProcessingException($"Please provide a media name. Example: `{CommandExample}`", showToUser: true);
+            throw new CommandProcessingException($"Please provide a media name. Example: `{HandlerOptions.CommandExample}`", showToUser: true);
         }
 
         await Task.Delay(2000, ct);
@@ -72,17 +72,12 @@ internal sealed class SearchCommandHandler(
         dbContext.Add(searchSnapshot);
         await dbContext.SaveChanges(ct);
 
-        await messageRenderer.SendMediaPage(
-                chatId: message.Chat.Id,
-                media: searchResults[0],
-                searchId: searchSnapshot.Id,
-                currentIndex: 0,
-                hasNext: searchResults.Count > 1,
-                ct: ct);
+        var mediaPage = messageRenderer.RenderMediaSearchPage(
+            media: searchResults[0],
+            searchId: searchSnapshot.Id,
+            currentIndex: 0,
+            hasNext: searchResults.Count > 1);
 
-        await BotClient.DeleteMessage(
-            chatId: botResponseMessage.Chat.Id,
-            messageId: botResponseMessage.MessageId,
-            cancellationToken: ct);
+        await RespondWithMessage(mediaPage, ct);
     }
 }

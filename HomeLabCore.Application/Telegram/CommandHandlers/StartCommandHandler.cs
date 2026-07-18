@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
 namespace HomeLabCore.Application.Telegram.CommandHandlers;
 
@@ -11,13 +10,13 @@ internal sealed class StartCommandHandler(
     IOptionsSnapshot<TelegramSettings> options)
     : CommandHandlerBase(telegramBotClient, options)
 {
-    public override bool RequiresAuthorization => false;
-
-    public override string CommandName => "start";
-
-    public override string CommandDescription => "Starts a conversation with the bot";
-
-    public override string? CommandExample => $"/{CommandName}";
+    public override CommandHandlerOptions HandlerOptions => new()
+    {
+        RequiresAuthorization = false,
+        CommandName = "start",
+        CommandDescription = "Starts a conversation with the bot",
+        CommandExample = null
+    };
 
     protected override async Task ProcessUpdate(Message message, Message botResponseMessage, CancellationToken ct)
     {
@@ -30,45 +29,35 @@ internal sealed class StartCommandHandler(
         if (userId is not null && Settings.UserIdWhitelist.Contains(userId.Value))
         {
             var alreadyWhitelistedText = $"""
-            👋 <b>Welcome, {firstName}!</b>
+            👋 **Welcome, {firstName}!**
 
             You're already whitelisted. Anyways, here are your ID's:
 
-            👤 <b>User ID:</b> <code>{userId}</code>
-            💬 <b>Chat ID:</b> <code>{chatId}</code>
+            👤 **User ID:** `{userId}`
+            💬 **Chat ID:** `{chatId}`
 
-            <i>Use /help command to get started.</i>
+            *Use /help command to get started.*
             """;
 
-            await BotClient.EditMessageText(
-                chatId: botResponseMessage.Chat.Id,
-                messageId: botResponseMessage.Id,
-                text: alreadyWhitelistedText,
-                parseMode: ParseMode.Html,
-                cancellationToken: ct);
+            await RespondWithText(alreadyWhitelistedText, ct);
 
             return;
         }
 
         var greetingText = $"""
-        👋 <b>Welcome, {firstName}!</b>
+        👋 **Welcome, {firstName}!**
 
         This is a private home server bot. To use it, you must be authorized by the administrator.
 
         Please tap the IDs below to copy them, and send them to the admin to be whitelisted:
 
-        👤 <b>User ID:</b> <code>{userId}</code>
-        💬 <b>Chat ID:</b> <code>{chatId}</code>
+        👤 **User ID:** `{userId}`
+        💬 **Chat ID:** `{chatId}`
 
-        <i>Once the admin confirms you are added, you can start talking to me!</i>
-        <i>Use /help command to get started.</i>
+        *Once the admin confirms you are added, you can start talking to me!*
+        *Use /help command to get started.*
         """;
 
-        await BotClient.EditMessageText(
-            chatId: chatId,
-            messageId: botResponseMessage.Id,
-            text: greetingText,
-            parseMode: ParseMode.Html,
-            cancellationToken: ct);
+        await RespondWithText(greetingText, ct);
     }
 }

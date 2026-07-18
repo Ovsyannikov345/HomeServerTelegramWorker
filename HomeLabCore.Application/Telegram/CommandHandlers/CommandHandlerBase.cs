@@ -1,4 +1,5 @@
 ﻿using HomeLabCore.Application.Telegram.Configuration;
+using HomeLabCore.Application.Telegram.Dto;
 using HomeLabCore.Application.Telegram.Exceptions;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
@@ -9,11 +10,7 @@ namespace HomeLabCore.Application.Telegram.CommandHandlers;
 
 public interface ICommandHandler
 {
-    public string CommandName { get; }
-
-    public string CommandDescription { get; }
-
-    public string? CommandExample { get; }
+    public CommandHandlerOptions HandlerOptions { get; }
 
     public bool CanHandle(Message message);
 
@@ -29,13 +26,9 @@ internal abstract class CommandHandlerBase(
 
     protected readonly TelegramSettings Settings = options.Value;
 
-    public abstract bool RequiresAuthorization { get; }
+    public abstract CommandHandlerOptions HandlerOptions { get; }
 
-    public abstract string CommandName { get; }
-
-    public abstract string CommandDescription { get; }
-
-    public abstract string? CommandExample { get; }
+    private CommandContext? _context;
 
     public virtual bool CanHandle(Message message)
     {
@@ -50,7 +43,7 @@ internal abstract class CommandHandlerBase(
         // Remove bot name if present (e.g., /command@botname)
         var command = parts[0].Split('@')[0];
 
-        if (!string.Equals(command, CommandName, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(command, HandlerOptions.CommandName, StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -67,7 +60,7 @@ internal abstract class CommandHandlerBase(
         {
             var hasAccess = message.From?.Id is { } userId && Settings.UserIdWhitelist.Contains(userId);
 
-            if (RequiresAuthorization && !hasAccess)
+            if (HandlerOptions.RequiresAuthorization && !hasAccess)
             {
                 await BotClient.SendMessage(
                     chatId: message.Chat.Id,
@@ -83,6 +76,12 @@ internal abstract class CommandHandlerBase(
                 text: "⏳ **Processing request...**",
                 parseMode: ParseMode.Markdown,
                 cancellationToken: ct);
+
+            _context = new CommandContext
+            {
+                UserMessage = message,
+                BotResponseMessage = botResponseMessage
+            };
 
             await ProcessUpdate(message, botResponseMessage, ct);
         }
@@ -105,6 +104,48 @@ internal abstract class CommandHandlerBase(
         }
 
         return parts[1];
+    }
+
+    protected async Task RespondWithText(string text, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(_context, nameof(_context));
+
+        await BotClient.EditMessageText(
+            chatId: _context.BotResponseMessage.Chat.Id,
+            messageId: _context.BotResponseMessage.MessageId,
+            text: text,
+            parseMode: ParseMode.Markdown,
+            cancellationToken: ct);
+    }
+
+    protected async Task RespondWithMessage(TelegramMessage message, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(_context, nameof(_context));
+
+        if (message.Photo is not null)
+        {
+            await BotClient.SendPhoto(
+                chatId: _context.UserMessage.Chat.Id,
+                photo: message.Photo,
+                caption: message.Caption,
+                parseMode: ParseMode.Markdown,
+                replyMarkup: message.Keyboard,
+                cancellationToken: ct);
+        }
+        else
+        {
+            await BotClient.SendMessage(
+                chatId: _context.UserMessage.Chat.Id,
+                text: message.Caption,
+                parseMode: ParseMode.Markdown,
+                replyMarkup: message.Keyboard,
+                cancellationToken: ct);
+        }
+
+        await BotClient.DeleteMessage(
+            chatId: _context.BotResponseMessage.Chat.Id,
+            messageId: _context.BotResponseMessage.MessageId,
+            cancellationToken: CancellationToken.None);
     }
 
     private async Task HandleException(Message originalMessage, Message? botResponseMessage, Exception ex, CancellationToken ct)

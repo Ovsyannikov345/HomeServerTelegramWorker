@@ -1,59 +1,56 @@
 ﻿using HomeLabCore.Application.Dto.Media;
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
-using HomeLabCore.Application.Telegram.Constants;
+using HomeLabCore.Application.Telegram.Dto;
 using HomeLabCore.Domain.Constants.Enums;
 using System.Text;
-using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace HomeLabCore.Application.Telegram.Services;
 
-public interface IMessageRenderer
+internal interface IMessageRenderer
 {
-    public Task SendMediaPage(
-        long chatId,
+    public TelegramMessage RenderMediaSearchPage(
         ExternalMediaInfo media,
         Guid searchId,
         int currentIndex,
-        bool hasNext,
-        CancellationToken ct);
+        bool hasNext);
 }
 
-public class MessageRenderer(ITelegramBotClient botClient) : IMessageRenderer
+internal class MessageRenderer : IMessageRenderer
 {
-    public async Task SendMediaPage(
-        long chatId,
+    private const string PlaceholderImagePath = "Assets/Images/no_image_placeholder.jpg";
+
+    public TelegramMessage RenderMediaSearchPage(
         ExternalMediaInfo media,
         Guid searchId,
         int currentIndex,
-        bool hasNext,
-        CancellationToken ct)
+        bool hasNext)
     {
         var caption = BuildCaption();
 
         var keyboard = BuildKeyboard();
 
+        InputFile photo;
+
         if (!string.IsNullOrWhiteSpace(media.PosterPath))
         {
-            await botClient.SendPhoto(
-                chatId: chatId,
-                photo: InputFile.FromUri(media.PosterPath),
-                caption: caption,
-                parseMode: ParseMode.Html,
-                replyMarkup: keyboard,
-                cancellationToken: ct);
+            photo = InputFile.FromUri(media.PosterPath);
         }
         else
         {
-            await botClient.SendMessage(
-                chatId: chatId,
-                text: caption,
-                parseMode: ParseMode.Html,
-                replyMarkup: keyboard,
-                cancellationToken: ct);
+            var fullPlaceholderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PlaceholderImagePath);
+            var fileStream = File.OpenRead(fullPlaceholderPath);
+
+            photo = InputFile.FromStream(fileStream, Path.GetFileName(fullPlaceholderPath));
         }
+
+        return new TelegramMessage()
+        {
+            Caption = caption,
+            Keyboard = keyboard,
+            Photo = photo
+        };
 
         string BuildCaption()
         {
@@ -65,8 +62,8 @@ public class MessageRenderer(ITelegramBotClient botClient) : IMessageRenderer
             }
 
             var caption = new StringBuilder();
-            caption.AppendLine($"🎬 <b>{media.Title}{releaseDate}</b>");
-            caption.AppendLine($"<i>{media.MediaType.ToString().ToUpper()}</i>\n");
+            caption.AppendLine($"🎬 **{media.Title}{releaseDate}**");
+            caption.AppendLine($"*{media.MediaType.ToString().ToUpper()}*\n");
             caption.AppendLine(media.Overview.Length > 800 ? media.Overview[..800] + "..." : media.Overview);
 
             return caption.ToString();
@@ -76,10 +73,17 @@ public class MessageRenderer(ITelegramBotClient botClient) : IMessageRenderer
         {
             var row1 = new InlineKeyboardButton[1];
 
+            // TODO this does not support series (Partially available status)
             if (media.Status is MediaStatus.Available)
             {
                 row1[0] = InlineKeyboardButton.WithCallbackData(
-                    "✅ Available", 
+                    "✅ Available",
+                    new EmptyPayload().ToCallbackQueryString());
+            }
+            if (media.Status is MediaStatus.Pending or MediaStatus.Processing)
+            {
+                row1[0] = InlineKeyboardButton.WithCallbackData(
+                    "⏳ Processing...",
                     new EmptyPayload().ToCallbackQueryString());
             }
             else

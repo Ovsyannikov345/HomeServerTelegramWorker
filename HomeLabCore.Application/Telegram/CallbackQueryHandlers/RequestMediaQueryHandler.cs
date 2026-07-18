@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
@@ -14,42 +15,32 @@ namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 internal sealed class RequestMediaQueryHandler(
     ITelegramBotClient telegramBotClient,
     IMediaManagerClient mediaManagerClient,
-    IOptionsSnapshot<TelegramSettings> options) 
+    IOptionsSnapshot<TelegramSettings> options)
     : CallbackQueryHandlerBase<RequestMediaPayload>(telegramBotClient, options), ICallbackQueryHandler
 {
     protected override string QueryPrefix => CallbackQueryConstants.Prefixes.RequestMedia;
 
     protected override bool RequiresAuthorization => true;
 
-    protected override async Task ProcessCallbackQuery(CallbackQuery callbackQuery, RequestMediaPayload payload, CancellationToken ct)
+    protected override async Task ProcessCallbackQuery(CallbackQueryContext context, RequestMediaPayload payload, CancellationToken ct)
     {
         var isSuccess = await mediaManagerClient.RequestMedia(payload.MediaType, payload.MediaId, ct);
 
         if (isSuccess)
         {
-            var caption = callbackQuery.Message!.Caption ?? callbackQuery.Message.Text;
-            var updatedCaption = caption + "\n\n✅ <b>Successfully requested!</b>";
+            var keyboard = context.SourceMessage.ReplyMarkup;
 
-            if (callbackQuery.Message.Type == MessageType.Photo)
+            if (keyboard is null)
             {
-                await BotClient.EditMessageCaption(
-                    chatId: callbackQuery.Message.Chat.Id,
-                    messageId: callbackQuery.Message.MessageId,
-                    caption: updatedCaption,
-                    parseMode: ParseMode.Html,
-                    replyMarkup: null, // TODO keep season buttons if series
-                    cancellationToken: ct);
+                return;
             }
-            else
-            {
-                await BotClient.EditMessageText(
-                    chatId: callbackQuery.Message.Chat.Id,
-                    messageId: callbackQuery.Message.MessageId,
-                    text: updatedCaption,
-                    parseMode: ParseMode.Html,
-                    replyMarkup: null, // TODO keep season buttons if series
-                    cancellationToken: ct);
-            }
+
+            IEnumerable<IEnumerable<InlineKeyboardButton>> updatedKeyboard = [
+                [ new InlineKeyboardButton("✅ Requested", new EmptyPayload().ToCallbackQueryString())],
+                ..keyboard.InlineKeyboard.Skip(1)
+            ];
+
+            await UpdateMessageKeyboard(new InlineKeyboardMarkup(updatedKeyboard), ct);
         }
         else
         {

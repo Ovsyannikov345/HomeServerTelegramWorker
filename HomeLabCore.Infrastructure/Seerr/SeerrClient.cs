@@ -99,4 +99,23 @@ internal sealed class SeerrClient(HttpClient httpClient, IOptionsMonitor<SeerrSe
 
         return true;
     }
+
+    public async Task<MediaStatus> GetMediaStatus(MediaType mediaType, int mediaId, CancellationToken ct)
+    {
+        // TODO implement series
+        if (mediaType is MediaType.Series)
+        {
+            throw new NotImplementedException("Series handling is not implemented yet");
+        }
+
+        var requestUrl = $"api/v1/movie/{mediaId}";
+
+        var response = await httpClient.GetAsync(requestUrl, ct);
+
+        response.EnsureSuccessStatusCode();
+
+        var movieDetails = await response.Content.ReadFromJsonAsync<SeerMovieDetailsResponse>(ct);
+
+        return movieDetails?.SeerMetadata?.Status.MapToInternalStatus() ?? MediaStatus.Unknown;
+    }
 }
