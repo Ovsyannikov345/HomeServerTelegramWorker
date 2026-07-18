@@ -45,6 +45,7 @@ public static class DependencyInjection
 
         // Other handlers
         services.AddScoped<IFallbackCommandHandler, FallbackCommandHandler>();
+        services.AddScoped<IFallbackCallbackQueryHandler, FallbackCallbackQueryHandler>();
 
         return services;
     }

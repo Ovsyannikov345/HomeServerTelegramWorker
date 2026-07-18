@@ -1,4 +1,5 @@
-﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
+﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CommandHandlers;
 using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
 using HomeLabCore.Worker.TelegramPolling.Extensions;
@@ -94,7 +95,9 @@ internal sealed class TelegramPollingWorker(
         }
         else
         {
-            // TODO figure out the handling approach.
+            var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackCallbackQueryHandler>();
+
+            await fallbackHandler.Handle(callbackQuery, ct);
         }
     }
 
