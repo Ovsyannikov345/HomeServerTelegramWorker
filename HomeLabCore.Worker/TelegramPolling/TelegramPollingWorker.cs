@@ -1,7 +1,7 @@
 ﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CommandHandlers;
 using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
-using HomeLabCore.Infrastructure.Telegram.Extensions;
+using HomeLabCore.Worker.TelegramPolling.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,9 +10,8 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace HomeLabCore.Infrastructure.Telegram;
+namespace HomeLabCore.Worker.TelegramPolling;
 
-// TODO this class should not do so much. It's only infrastructure!
 internal sealed class TelegramPollingWorker(
     IServiceScopeFactory scopeFactory,
     ITelegramBotClient telegramBotClient,

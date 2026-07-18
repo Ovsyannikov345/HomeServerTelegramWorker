@@ -10,4 +10,5 @@
   <Project Path="HomeLabCore.Application/HomeLabCore.Application.csproj" />
   <Project Path="HomeLabCore.Domain/HomeLabCore.Domain.csproj" />
   <Project Path="HomeLabCore.Infrastructure/HomeLabCore.Infrastructure.csproj" />
+  <Project Path="HomeLabCore.Worker/HomeLabCore.Worker.csproj" Id="e27597ac-2c8f-4058-8946-2421b27ed90b" />
 </Solution>
