@@ -1,9 +1,9 @@
-﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
+﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
 using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Constants;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 
 namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
@@ -16,7 +16,7 @@ internal sealed class EmptyQueryHandler(
 
     protected override string QueryPrefix => CallbackQueryConstants.Prefixes.Empty;
 
-    protected override Task ProcessCallbackQuery(CallbackQuery callbackQuery, RequestMediaPayload payload, CancellationToken ct)
+    protected override Task ProcessCallbackQuery(CallbackQueryContext context, RequestMediaPayload payload, CancellationToken ct)
     {
         return Task.CompletedTask;
     }

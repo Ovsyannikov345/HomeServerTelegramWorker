@@ -52,9 +52,6 @@ public static class DependencyInjection
             return new TelegramBotClient(settings.BotToken);
         });
 
-        // Background Services
-        services.AddHostedService<TelegramPollingWorker>();
-
         // Database
         services.AddSingleton<AuditableEntityInterceptor>();
 

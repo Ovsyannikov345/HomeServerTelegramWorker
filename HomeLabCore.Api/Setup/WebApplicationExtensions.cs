@@ -1,9 +1,9 @@
 ﻿using HomeLabCore.Api.Endpoints;
 using HomeLabCore.Application.Interfaces;
 
-namespace HomeLabCore.Api;
+namespace HomeLabCore.Api.Setup;
 
-public static class ApplicationExtensions
+public static class WebApplicationExtensions
 {
     public static WebApplication MapEndpoints(this WebApplication application)
     {

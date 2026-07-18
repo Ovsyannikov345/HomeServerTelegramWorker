@@ -20,4 +20,13 @@
     <ProjectReference Include="..\HomeLabCore.Domain\HomeLabCore.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="Assets\Images\no_image_placeholder.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Images\no_image_placeholder.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,7 +1,7 @@
 ﻿using HomeLabCore.Application;
 using HomeLabCore.Infrastructure;
 
-namespace HomeLabCore.Api;
+namespace HomeLabCore.Api.Setup;
 
 public static class DependencyInjection
 {
@@ -12,6 +12,7 @@ public static class DependencyInjection
         return applicationBuilder.Services
             .AddInfrastructureServices(configuration)
             .AddApplicationServices(configuration)
+            .AddWorkerServices()
             .AddApiServices();
     }
 

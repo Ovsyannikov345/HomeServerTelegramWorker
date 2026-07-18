@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace HomeLabCore.Infrastructure.Telegram.Extensions;
+namespace HomeLabCore.Worker.TelegramPolling.Extensions;
 
 internal static class TelegramUpdateExtensions
 {

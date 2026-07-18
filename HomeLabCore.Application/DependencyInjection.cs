@@ -1,6 +1,7 @@
-﻿using HomeLabCore.Application.Telegram;
-using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
+﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CommandHandlers;
+using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Services;
 using Microsoft.Extensions.Configuration;
@@ -43,7 +44,8 @@ public static class DependencyInjection
             .AddScoped<ICallbackQueryHandler, ChangeSearchPageQueryHandler>();
 
         // Other handlers
-        services.AddScoped<IFallbackHandler, FallbackHandler>();
+        services.AddScoped<IFallbackCommandHandler, FallbackCommandHandler>();
+        services.AddScoped<IFallbackCallbackQueryHandler, FallbackCallbackQueryHandler>();
 
         return services;
     }

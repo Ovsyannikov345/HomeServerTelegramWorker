@@ -2,15 +2,14 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace HomeLabCore.Application.Telegram;
+namespace HomeLabCore.Application.Telegram.CommandHandlers;
 
-public interface IFallbackHandler
+public interface IFallbackCommandHandler
 {
     public Task Handle(Message message, CancellationToken ct);
 }
 
-// TODO move to better place
-public sealed class FallbackHandler(ITelegramBotClient telegramBotClient, ILogger<FallbackHandler> logger) : IFallbackHandler
+public sealed class FallbackCommandHandler(ITelegramBotClient telegramBotClient, ILogger<FallbackCommandHandler> logger) : IFallbackCommandHandler
 {
     public async Task Handle(Message message, CancellationToken ct)
     {

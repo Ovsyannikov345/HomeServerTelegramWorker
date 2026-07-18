@@ -1,7 +1,8 @@
-﻿using HomeLabCore.Application.Telegram;
-using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
+﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CommandHandlers;
-using HomeLabCore.Infrastructure.Telegram.Extensions;
+using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
+using HomeLabCore.Worker.TelegramPolling.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,9 +11,8 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace HomeLabCore.Infrastructure.Telegram;
+namespace HomeLabCore.Worker.TelegramPolling;
 
-// TODO this class should not do so much. It's only infrastructure!
 internal sealed class TelegramPollingWorker(
     IServiceScopeFactory scopeFactory,
     ITelegramBotClient telegramBotClient,
@@ -77,7 +77,7 @@ internal sealed class TelegramPollingWorker(
         }
         else
         {
-            var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackHandler>();
+            var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackCommandHandler>();
 
             await fallbackHandler.Handle(message, ct);
         }
@@ -95,7 +95,9 @@ internal sealed class TelegramPollingWorker(
         }
         else
         {
-            // TODO figure out the handling approach.
+            var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackCallbackQueryHandler>();
+
+            await fallbackHandler.Handle(callbackQuery, ct);
         }
     }
 

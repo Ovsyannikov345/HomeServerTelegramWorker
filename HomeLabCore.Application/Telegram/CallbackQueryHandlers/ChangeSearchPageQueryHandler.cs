@@ -1,15 +1,17 @@
 ﻿using HomeLabCore.Application.Dto.Media;
+using HomeLabCore.Application.Interfaces.Clients;
 using HomeLabCore.Application.Interfaces.Database;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
 using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Constants;
 using HomeLabCore.Application.Telegram.Exceptions;
 using HomeLabCore.Application.Telegram.Services;
+using HomeLabCore.Domain.Constants.Enums;
 using HomeLabCore.Domain.Entities.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
-using Telegram.Bot.Types;
 
 namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
@@ -17,6 +19,7 @@ namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 internal sealed class ChangeSearchPageQueryHandler(
     IApplicationDbContext dbContext,
     ITelegramBotClient telegramBotClient,
+    IMediaManagerClient mediaManagerClient,
     IMessageRenderer messageRenderer,
     IOptionsSnapshot<TelegramSettings> options)
     : CallbackQueryHandlerBase<ChangeSearchPagePayload>(telegramBotClient, options), ICallbackQueryHandler
@@ -25,7 +28,7 @@ internal sealed class ChangeSearchPageQueryHandler(
 
     protected override bool RequiresAuthorization => true;
 
-    protected override async Task ProcessCallbackQuery(CallbackQuery callbackQuery, ChangeSearchPagePayload payload, CancellationToken ct)
+    protected override async Task ProcessCallbackQuery(CallbackQueryContext context, ChangeSearchPagePayload payload, CancellationToken ct)
     {
         var searchSnapshot = await dbContext
             .Query<MediaSearchSnapshot>()
@@ -43,19 +46,26 @@ internal sealed class ChangeSearchPageQueryHandler(
 
         var snapshotEntry = searchSnapshot.Results[payload.NextIndex];
 
+        var mediaInfo = ExternalMediaInfo.FromSnapshot(snapshotEntry);
+        
+        // TODO handle series
+        if (mediaInfo.MediaType is MediaType.Movie)
+        {
+            mediaInfo = mediaInfo with
+            {
+                Status = await mediaManagerClient.GetMediaStatus(snapshotEntry.MediaType, snapshotEntry.Id, ct)
+            };
+        }
+
         var hasNext = payload.NextIndex < searchSnapshot.Results.Count - 1;
 
-        await messageRenderer.SendMediaPage(
-            chatId: callbackQuery.Message!.Chat.Id,
-            media: ExternalMediaInfo.FromSnapshot(snapshotEntry),
+        var mediaPage = messageRenderer.RenderMediaSearchPage(
+            media: mediaInfo,
             searchId: payload.SearchId,
             currentIndex: payload.NextIndex,
-            hasNext: hasNext,
-            ct: ct);
+            hasNext: hasNext);
 
-        await BotClient.DeleteMessage(
-            chatId: callbackQuery.Message.Chat.Id,
-            messageId: callbackQuery.Message.MessageId,
-            cancellationToken: ct);
+        await RespondWithMessage(mediaPage, ct);
+        await DeleteOriginalMessage(CancellationToken.None);
     }
 }

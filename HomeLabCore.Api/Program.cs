@@ -1,4 +1,4 @@
-using HomeLabCore.Api;
+using HomeLabCore.Api.Setup;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,8 +11,8 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-await app
-    .MapEndpoints()
-    .InitializeApplication();
+app.MapEndpoints();
+
+await app.InitializeApplication();
 
 await app.RunAsync();
