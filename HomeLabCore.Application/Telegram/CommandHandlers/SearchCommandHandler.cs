@@ -32,14 +32,11 @@ internal sealed class SearchCommandHandler(
 
     protected override async Task ProcessUpdate(Message message, Message botResponseMessage, CancellationToken ct)
     {
-        // TODO handle already downloaded
-        // TODO handle season selection + already downloaded seasons
-
         var searchTerm = GetCommandArgument(message);
 
         if (searchTerm is null)
         {
-            throw new CommandProcessingException($"Please provide a movie name. Example: `{CommandExample}`", showToUser: true);
+            throw new CommandProcessingException($"Please provide a media name. Example: `{CommandExample}`", showToUser: true);
         }
 
         await Task.Delay(2000, ct);

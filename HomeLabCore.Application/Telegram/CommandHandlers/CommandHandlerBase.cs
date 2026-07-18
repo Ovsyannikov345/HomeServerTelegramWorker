@@ -78,7 +78,6 @@ internal abstract class CommandHandlerBase(
                 return;
             }
 
-            // TODO this should be controlled by handlers. Sometimes there's no need for message
             botResponseMessage = await BotClient.SendMessage(
                 chatId: message.Chat.Id,
                 text: "⏳ **Processing request...**",
@@ -88,50 +87,9 @@ internal abstract class CommandHandlerBase(
             await ProcessUpdate(message, botResponseMessage, ct);
         }
         // TODO add correrlation id to message for debugging
-        // TODO refactor
-        catch (CommandProcessingException ex)
-        {
-            if (botResponseMessage is null)
-            {
-                await BotClient.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: $"Something went wrong while processing the command :(",
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: ct);
-            }
-            else
-            {
-                var errorMessage = ex.ShowMessageToUser
-                    ? $"❌ **{ex.Message}**"
-                    : "❌ **Something went wrong while processing the command :(**";
-
-                await BotClient.EditMessageText(
-                    chatId: botResponseMessage.Chat.Id,
-                    messageId: botResponseMessage.MessageId,
-                    text: errorMessage,
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: ct);
-            }
-        }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            if (botResponseMessage is null)
-            {
-                await BotClient.SendMessage(
-                    chatId: message.Chat.Id,
-                    text: "Something went wrong while processing the command :(",
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: ct);
-            }
-            else
-            {
-                await BotClient.EditMessageText(
-                    chatId: botResponseMessage.Chat.Id,
-                    messageId: botResponseMessage.MessageId,
-                    text: "❌ **Something went wrong while processing the command :(**",
-                    parseMode: ParseMode.Markdown,
-                    cancellationToken: ct);
-            }
+            await HandleException(message, botResponseMessage, ex, ct);
         }
     }
 
@@ -147,5 +105,37 @@ internal abstract class CommandHandlerBase(
         }
 
         return parts[1];
+    }
+
+    private async Task HandleException(Message originalMessage, Message? botResponseMessage, Exception ex, CancellationToken ct)
+    {
+        var responseMessage = ex switch
+        {
+            CommandProcessingException commandEx when commandEx.ShowMessageToUser
+                => $"❌ **{ex.Message}**",
+
+            CommandProcessingException commandEx when !commandEx.ShowMessageToUser
+                => $"❌ **Something went wrong while processing the command :(**",
+
+            _ => $"❌ **Something went wrong while processing the command :(**"
+        };
+
+        if (botResponseMessage is null)
+        {
+            await BotClient.SendMessage(
+                chatId: originalMessage.Chat.Id,
+                text: responseMessage,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
+        else
+        {
+            await BotClient.EditMessageText(
+                chatId: botResponseMessage.Chat.Id,
+                messageId: botResponseMessage.MessageId,
+                text: responseMessage,
+                parseMode: ParseMode.Markdown,
+                cancellationToken: ct);
+        }
     }
 }
