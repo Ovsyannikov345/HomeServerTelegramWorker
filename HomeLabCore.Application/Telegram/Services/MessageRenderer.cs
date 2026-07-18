@@ -19,7 +19,7 @@ internal interface IMessageRenderer
 
 internal class MessageRenderer : IMessageRenderer
 {
-    private const string PlaceholderImagePath = "Assets/Images/no_image_placeholder.jpg";
+    private const string PlaceholderImagePath = "Assets/Images/no_image_placeholder.png";
 
     public TelegramMessage RenderMediaSearchPage(
         ExternalMediaInfo media,
