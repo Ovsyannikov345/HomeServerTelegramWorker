@@ -1,7 +1,10 @@
-﻿using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
+﻿using HomeLabCore.Application.Logging;
+using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
 using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Dto;
 using HomeLabCore.Application.Telegram.Exceptions;
+using HomeLabCore.Shared.Contexts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -18,14 +21,17 @@ public interface ICallbackQueryHandler
 }
 
 internal abstract class CallbackQueryHandlerBase<TPayload>(
-    ITelegramBotClient telegramBotClient, 
-    IOptionsSnapshot<TelegramSettings> options) 
-    : ICallbackQueryHandler 
+    ITelegramBotClient telegramBotClient,
+    IOptionsSnapshot<TelegramSettings> options,
+    ILogger logger)
+    : ICallbackQueryHandler
     where TPayload : ICallbackQueryPayload<TPayload>
 {
     protected readonly ITelegramBotClient BotClient = telegramBotClient;
 
     protected readonly TelegramSettings Settings = options.Value;
+
+    protected readonly ILogger Logger = logger;
 
     protected abstract bool RequiresAuthorization { get; }
 
@@ -41,13 +47,16 @@ internal abstract class CallbackQueryHandlerBase<TPayload>(
 
     public async Task Handle(CallbackQuery callbackQuery, CancellationToken ct)
     {
-        // TODO add logging
         try
         {
-            var hasAccess = callbackQuery.From?.Id is { } userId && Settings.UserIdWhitelist.Contains(userId);
+            var userId = callbackQuery.From?.Id;
+
+            var hasAccess = userId is not null && Settings.UserIdWhitelist.Contains(userId.Value);
 
             if (RequiresAuthorization && !hasAccess)
             {
+                Logger.CallbackQueryAccessDenied(callbackQuery.From?.Id, QueryPrefix);
+
                 await BotClient.AnswerCallbackQuery(callbackQuery.Id, "Access denied.", cancellationToken: ct);
 
                 return;
@@ -55,66 +64,47 @@ internal abstract class CallbackQueryHandlerBase<TPayload>(
 
             await BotClient.AnswerCallbackQuery(callbackQuery.Id, cancellationToken: ct);
 
-            if (callbackQuery.Data is null)
+            if (callbackQuery.Data is null || callbackQuery.Message is null)
             {
+                Logger.CallbackQueryRejected(callbackQuery.Id, "Data or Message is null");
+
                 return;
             }
 
             if (!TPayload.TryParse(callbackQuery.Data, out var payload))
             {
-                return;
-            }
+                Logger.CallbackQueryParsingFailed(callbackQuery.Data, typeof(TPayload).Name);
 
-            if (callbackQuery.Message is null)
-            {
                 return;
             }
 
             _context = new CallbackQueryContext
             {
+                CallbackQuery = callbackQuery,
                 SourceMessage = callbackQuery.Message
             };
 
+            Logger.CallbackQueryProcessingStarted(callbackQuery.Data, userId);
+
             await ProcessCallbackQuery(_context, payload, ct);
+
+            Logger.CallbackQueryProcessingFinished();
         }
-        // TODO add correrlation id to message for debugging
         catch (CallbackQueryProcessingException ex)
         {
+            Logger.CallbackQueryProcessingFailed(callbackQuery.Id, callbackQuery.From?.Id, ex.Message);
+
             var errorMessage = ex.ShowMessageToUser
                 ? ex.Message
                 : "Something went wrong :(";
 
-            if (callbackQuery.Message is { } message)
-            {
-                var caption = callbackQuery.Message!.Caption ?? callbackQuery.Message.Text;
-
-                var updatedCaption = caption + $"\n\n❌ **{errorMessage}**";
-
-                await BotClient.EditMessageCaption(
-                    chatId: message.Chat.Id,
-                    messageId: message.MessageId,
-                    caption: updatedCaption,
-                    parseMode: ParseMode.Markdown,
-                    replyMarkup: null,
-                    cancellationToken: ct);
-            }
+            await ShowErrorOnMessage(callbackQuery.Message, errorMessage, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            if (callbackQuery.Message is { } message)
-            {
-                var caption = callbackQuery.Message!.Caption ?? callbackQuery.Message.Text;
+            Logger.CallbackQueryProcessingFailed(callbackQuery.Id, callbackQuery.From?.Id, ex);
 
-                var updatedCaption = caption + "\n\n❌ **Something went wrong :(**";
-
-                await BotClient.EditMessageCaption(
-                    chatId: message.Chat.Id,
-                    messageId: message.MessageId,
-                    caption: updatedCaption,
-                    parseMode: ParseMode.Markdown,
-                    replyMarkup: null,
-                    cancellationToken: ct);
-            }
+            await ShowErrorOnMessage(callbackQuery.Message, "Something went wrong :(", ct);
         }
     }
 
@@ -143,6 +133,8 @@ internal abstract class CallbackQueryHandlerBase<TPayload>(
                 replyMarkup: message.Keyboard,
                 cancellationToken: ct);
         }
+
+        Logger.RespondedToCallbackQueryWithNewMessage(_context.CallbackQuery.Id, _context.SourceMessage.Chat.Id);
     }
 
     protected async Task UpdateMessageKeyboard(InlineKeyboardMarkup keyboard, CancellationToken ct)
@@ -154,6 +146,8 @@ internal abstract class CallbackQueryHandlerBase<TPayload>(
             _context.SourceMessage.Id,
             keyboard,
             cancellationToken: ct);
+
+        Logger.UpdatedInlineKeyboardForMessage(_context.SourceMessage.Id);
     }
 
     protected async Task DeleteOriginalMessage(CancellationToken ct)
@@ -163,6 +157,27 @@ internal abstract class CallbackQueryHandlerBase<TPayload>(
         await BotClient.DeleteMessage(
             chatId: _context.SourceMessage.Chat.Id,
             messageId: _context.SourceMessage.MessageId,
+            cancellationToken: ct);
+
+        Logger.DeletedMessage(_context.SourceMessage.Id);
+    }
+
+    private async Task ShowErrorOnMessage(Message? message, string errorMessage, CancellationToken ct)
+    {
+        if (message is null)
+        {
+            return;
+        }
+
+        var caption = message.Caption ?? message.Text;
+        var updatedCaption = caption + $"\n\n❌ **{errorMessage}** \n\n🔍 Correlation ID: {CorrelationContext.CorrelationId}";
+
+        await BotClient.EditMessageCaption(
+            chatId: message.Chat.Id,
+            messageId: message.MessageId,
+            caption: updatedCaption,
+            parseMode: ParseMode.Markdown,
+            replyMarkup: null,
             cancellationToken: ct);
     }
 }

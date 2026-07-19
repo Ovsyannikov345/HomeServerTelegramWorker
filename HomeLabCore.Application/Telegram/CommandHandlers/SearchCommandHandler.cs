@@ -1,4 +1,5 @@
-﻿using HomeLabCore.Application.Interfaces.Clients;
+﻿using HomeLabCore.Application.Dto.Media;
+using HomeLabCore.Application.Interfaces.Clients;
 using HomeLabCore.Application.Interfaces.Database;
 using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.Configuration;
@@ -19,7 +20,7 @@ internal sealed class SearchCommandHandler(
     IMessageRenderer messageRenderer,
     IOptionsSnapshot<TelegramSettings> options,
     ILogger<SearchCommandHandler> logger)
-    : CommandHandlerBase(telegramBotClient, options)
+    : CommandHandlerBase(telegramBotClient, options, logger)
 {
     private const int SearchResultsTotalCount = 20;
 
@@ -41,9 +42,6 @@ internal sealed class SearchCommandHandler(
         }
 
         searchTerm = searchTerm.Trim();
-
-        // TODO proper logging
-        logger.LogInformation("Chat {ChatId} searching for: {Query}", message.Chat.Id, searchTerm);
 
         var searchResults = await mediaManagerClient.Search(searchTerm, SearchResultsTotalCount, ct);
 

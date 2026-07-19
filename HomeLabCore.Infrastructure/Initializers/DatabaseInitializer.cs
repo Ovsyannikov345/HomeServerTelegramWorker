@@ -1,5 +1,6 @@
 ﻿using HomeLabCore.Application.Interfaces;
 using HomeLabCore.Infrastructure.Database;
+using HomeLabCore.Infrastructure.Logging;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -16,15 +17,15 @@ internal sealed class DatabaseInitializer(
     {
         try
         {
-            logger.LogInformation("Applying pending database migrations...");
+            logger.MigratingDatabase();
 
             await dbContext.Database.MigrateAsync(cancellationToken);
 
-            logger.LogInformation("Database migration completed successfully.");
+            logger.MigratedDatabaseSuccessfully();
         }
         catch (Exception ex)
         {
-            logger.LogCritical(ex, "Database migration failed during startup.");
+            logger.DatabaseMigrationFailed(ex);
 
             throw;
         }

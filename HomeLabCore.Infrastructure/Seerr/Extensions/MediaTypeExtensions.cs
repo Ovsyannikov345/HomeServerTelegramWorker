@@ -1,7 +1,7 @@
 ﻿using HomeLabCore.Domain.Constants.Enums;
 using HomeLabCore.Infrastructure.Seerr.Constants;
 
-namespace HomeLabCore.Infrastructure.Seerr.Externsions;
+namespace HomeLabCore.Infrastructure.Seerr.Extensions;
 
 internal static class MediaTypeExtensions
 {

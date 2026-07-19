@@ -8,12 +8,12 @@ using HomeLabCore.Infrastructure.Initializers;
 using HomeLabCore.Infrastructure.Seerr;
 using HomeLabCore.Infrastructure.Seerr.Configuration;
 using HomeLabCore.Infrastructure.Seerr.Handlers;
-using HomeLabCore.Infrastructure.Telegram;
 using HomeLabCore.Infrastructure.Telegram.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Serilog;
 using Telegram.Bot;
 
 namespace HomeLabCore.Infrastructure;
@@ -22,6 +22,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
     {
+        Log.Information("Configuring HomeLabCore.Infrastructure services...");
+
         // Configuration
         services
             .AddOptions<TelegramSettings>()
@@ -36,13 +38,16 @@ public static class DependencyInjection
 
         // HTTP Clients
         services.AddTransient<SeerrAuthorizationHandler>();
+        services.AddTransient<SeerrFailedResponseLoggingHandler>();
 
         services.AddHttpClient<IMediaManagerClient, SeerrClient>((serviceProvider, client) =>
         {
             var seerSettings = serviceProvider.GetRequiredService<IOptionsMonitor<SeerrSettings>>();
 
             client.BaseAddress = new Uri(seerSettings.CurrentValue.BaseUrl, UriKind.Absolute);
-        }).AddHttpMessageHandler<SeerrAuthorizationHandler>();
+        })
+        .AddHttpMessageHandler<SeerrAuthorizationHandler>()
+        .AddHttpMessageHandler<SeerrFailedResponseLoggingHandler>();
 
         // Telegram
         services.AddSingleton<ITelegramBotClient>(sp =>

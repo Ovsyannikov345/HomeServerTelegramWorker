@@ -1,5 +1,6 @@
 ﻿using HomeLabCore.Api.Endpoints;
 using HomeLabCore.Application.Interfaces;
+using Serilog;
 
 namespace HomeLabCore.Api.Setup;
 
@@ -16,6 +17,8 @@ public static class WebApplicationExtensions
 
     public static async Task InitializeApplication(this WebApplication app)
     {
+        Log.Information("Initalizing the application...");
+
         var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 
         var cancellationToken = lifetime.ApplicationStopping;

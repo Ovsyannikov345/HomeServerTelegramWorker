@@ -2,14 +2,20 @@
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.CommandHandlers;
 using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
+using HomeLabCore.Shared.Constants;
+using HomeLabCore.Shared.Contexts;
+using HomeLabCore.Worker.Logging;
 using HomeLabCore.Worker.TelegramPolling.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Serilog.Context;
+using System.Text.Json;
 using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using WorkerLogPropertyNames = HomeLabCore.Worker.Constants.LogPropertyNames;
 
 namespace HomeLabCore.Worker.TelegramPolling;
 
@@ -29,6 +35,8 @@ internal sealed class TelegramPollingWorker(
 
         try
         {
+            logger.StartingTelegramUpdatePolling();
+
             await telegramBotClient.ReceiveAsync(
                 updateHandler: HandleUpdate,
                 errorHandler: HandlePollingError,
@@ -38,14 +46,26 @@ internal sealed class TelegramPollingWorker(
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Stopping polling because application is shutting down.");
+            logger.TelegramUpdatePollingStopped();
+        }
+        catch (Exception ex)
+        {
+            logger.TelegramUpdatePollingWorkerCrashed(ex);
         }
     }
 
     private async Task HandleUpdate(ITelegramBotClient bot, Update update, CancellationToken ct)
     {
+        using var correlationContext = LogContext.PushProperty(LogPropertyNames.CorrelationId, CorrelationContext.CorrelationId);
+        using var updateIdContext = LogContext.PushProperty(WorkerLogPropertyNames.TelegramUpdateId, update.Id);
+
         try
         {
+            if (logger.IsEnabled(LogLevel.Information))
+            {
+                logger.TelegramUpdateReceived(update.Id, JsonSerializer.Serialize(update));
+            }
+
             if (update.TryExtractCommand(out var command))
             {
                 await HandleCommand(command, ct);
@@ -56,18 +76,20 @@ internal sealed class TelegramPollingWorker(
             }
             else
             {
-                logger.LogError("Update {UpdateId} can't be handled because of unknown update type.", update.Id);
+                logger.TelegramUpdateHandlingFailed(update.Id, "Failed to determine the update type");
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error handling update {UpdateId}", update.Id);
+            logger.TelegramUpdateHandlingFailed(update.Id, ex);
         }
     }
 
     async Task HandleCommand(Message message, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
+
+        using var messageIdContext = LogContext.PushProperty(WorkerLogPropertyNames.TelegramMessageId, message.Id);
 
         var commandHandlers = scope.ServiceProvider.GetServices<ICommandHandler>();
 
@@ -77,6 +99,8 @@ internal sealed class TelegramPollingWorker(
         }
         else
         {
+            logger.FailedToDetermineCommandHandler(message.Text);
+
             var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackCommandHandler>();
 
             await fallbackHandler.Handle(message, ct);
@@ -87,6 +111,8 @@ internal sealed class TelegramPollingWorker(
     {
         await using var scope = scopeFactory.CreateAsyncScope();
 
+        using var queryIdContext = LogContext.PushProperty(WorkerLogPropertyNames.TelegramCallbackQueryId, callbackQuery.Id);
+
         var callbackQueryHandlers = scope.ServiceProvider.GetServices<ICallbackQueryHandler>();
 
         if (callbackQueryHandlers.FirstOrDefault(h => h.CanHandle(callbackQuery)) is { } capableHandler)
@@ -95,6 +121,8 @@ internal sealed class TelegramPollingWorker(
         }
         else
         {
+            logger.FailedToDetermineCallbackQueryHandler(callbackQuery.Data);
+
             var fallbackHandler = scope.ServiceProvider.GetRequiredService<IFallbackCallbackQueryHandler>();
 
             await fallbackHandler.Handle(callbackQuery, ct);
@@ -103,7 +131,9 @@ internal sealed class TelegramPollingWorker(
 
     private Task HandlePollingError(ITelegramBotClient bot, Exception exception, CancellationToken ct)
     {
-        logger.LogError(exception, "Telegram API Polling Error");
+        using var correlationContext = LogContext.PushProperty(LogPropertyNames.CorrelationId, CorrelationContext.CorrelationId);
+
+        logger.TelegramUpdatePollingFailed(exception);
 
         return Task.CompletedTask;
     }

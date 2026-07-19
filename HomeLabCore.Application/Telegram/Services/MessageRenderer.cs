@@ -80,7 +80,7 @@ internal class MessageRenderer : IMessageRenderer
                     "✅ Available",
                     new EmptyPayload().ToCallbackQueryString());
             }
-            if (media.Status is MediaStatus.Pending or MediaStatus.Processing)
+            else if (media.Status is MediaStatus.Pending or MediaStatus.Processing)
             {
                 row1[0] = InlineKeyboardButton.WithCallbackData(
                     "⏳ Processing...",

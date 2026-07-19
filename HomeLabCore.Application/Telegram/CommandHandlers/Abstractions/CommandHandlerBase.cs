@@ -1,6 +1,9 @@
-﻿using HomeLabCore.Application.Telegram.Configuration;
+﻿using HomeLabCore.Application.Logging;
+using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Dto;
 using HomeLabCore.Application.Telegram.Exceptions;
+using HomeLabCore.Shared.Contexts;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -19,12 +22,15 @@ public interface ICommandHandler
 
 internal abstract class CommandHandlerBase(
     ITelegramBotClient telegramBotClient,
-    IOptionsSnapshot<TelegramSettings> options)
+    IOptionsSnapshot<TelegramSettings> options,
+    ILogger logger)
     : ICommandHandler
 {
     protected readonly ITelegramBotClient BotClient = telegramBotClient;
 
     protected readonly TelegramSettings Settings = options.Value;
+
+    protected readonly ILogger Logger = logger;
 
     public abstract CommandHandlerOptions HandlerOptions { get; }
 
@@ -51,17 +57,20 @@ internal abstract class CommandHandlerBase(
         return true;
     }
 
-    // TODO logs here
     public async Task Handle(Message message, CancellationToken ct)
     {
         Message? botResponseMessage = null;
 
         try
         {
-            var hasAccess = message.From?.Id is { } userId && Settings.UserIdWhitelist.Contains(userId);
+            var userId = message.From?.Id;
+
+            var hasAccess = userId is not null && Settings.UserIdWhitelist.Contains(userId.Value);
 
             if (HandlerOptions.RequiresAuthorization && !hasAccess)
             {
+                Logger.CommandAccessDenied(userId, HandlerOptions.CommandName);
+
                 await BotClient.SendMessage(
                     chatId: message.Chat.Id,
                     text: $"❌ **Access denied.**",
@@ -83,9 +92,12 @@ internal abstract class CommandHandlerBase(
                 BotResponseMessage = botResponseMessage
             };
 
+            Logger.CommandProcessingStarted(message.Text, userId, message.Chat.Id);
+
             await ProcessUpdate(message, botResponseMessage, ct);
+
+            Logger.CommandProcessingFinished();
         }
-        // TODO add correrlation id to message for debugging
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             await HandleException(message, botResponseMessage, ex, ct);
@@ -116,6 +128,8 @@ internal abstract class CommandHandlerBase(
             text: text,
             parseMode: ParseMode.Markdown,
             cancellationToken: ct);
+
+        Logger.UpdatedTextForMessage(_context.BotResponseMessage.MessageId);
     }
 
     protected async Task RespondWithMessage(TelegramMessage message, CancellationToken ct)
@@ -142,23 +156,36 @@ internal abstract class CommandHandlerBase(
                 cancellationToken: ct);
         }
 
+        Logger.RespondedToCommandWithNewMessage(_context.UserMessage.Chat.Id);
+
         await BotClient.DeleteMessage(
             chatId: _context.BotResponseMessage.Chat.Id,
             messageId: _context.BotResponseMessage.MessageId,
             cancellationToken: CancellationToken.None);
+
+        Logger.DeletedMessage(_context.BotResponseMessage.MessageId);
     }
 
     private async Task HandleException(Message originalMessage, Message? botResponseMessage, Exception ex, CancellationToken ct)
     {
+        if (ex is CommandProcessingException)
+        {
+            Logger.CommandProcessingFailed(ex.Message);
+        }
+        else
+        {
+            Logger.CommandProcessingFailed(ex);
+        }
+
         var responseMessage = ex switch
         {
             CommandProcessingException commandEx when commandEx.ShowMessageToUser
                 => $"❌ **{ex.Message}**",
 
             CommandProcessingException commandEx when !commandEx.ShowMessageToUser
-                => $"❌ **Something went wrong while processing the command :(**",
+                => $"❌ **Something went wrong while processing the command :(** \n\n🔍 Correlation ID: {CorrelationContext.CorrelationId}",
 
-            _ => $"❌ **Something went wrong while processing the command :(**"
+            _ => $"❌ **Something went wrong while processing the command :(** \n\n🔍 Correlation ID: {CorrelationContext.CorrelationId}"
         };
 
         if (botResponseMessage is null)

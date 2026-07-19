@@ -5,7 +5,7 @@ using HomeLabCore.Infrastructure.Seerr.Configuration;
 using HomeLabCore.Infrastructure.Seerr.Constants;
 using HomeLabCore.Infrastructure.Seerr.Constants.Enums;
 using HomeLabCore.Infrastructure.Seerr.Contracts;
-using HomeLabCore.Infrastructure.Seerr.Externsions;
+using HomeLabCore.Infrastructure.Seerr.Extensions;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Json;
@@ -69,7 +69,7 @@ internal sealed class SeerrClient(HttpClient httpClient, IOptionsMonitor<SeerrSe
         return [.. totalResults.Take(resultsCount)];
     }
 
-    public async Task<bool> RequestMedia(MediaType mediaType, int mediaId, CancellationToken ct)
+    public async Task RequestMedia(MediaType mediaType, int mediaId, CancellationToken ct)
     {
         var settings = options.CurrentValue;
 
@@ -92,12 +92,7 @@ internal sealed class SeerrClient(HttpClient httpClient, IOptionsMonitor<SeerrSe
 
         var response = await httpClient.PostAsJsonAsync(requestUrl, payload, ct);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            return false;
-        }
-
-        return true;
+        response.EnsureSuccessStatusCode();
     }
 
     public async Task<MediaStatus> GetMediaStatus(MediaType mediaType, int mediaId, CancellationToken ct)

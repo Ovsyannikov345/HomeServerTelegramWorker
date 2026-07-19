@@ -6,6 +6,7 @@ using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace HomeLabCore.Application;
 
@@ -13,6 +14,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
+        Log.Information("Configuring HomeLabCore.Application services...");
+
         // Configuration
         services
             .AddOptions<TelegramSettings>()

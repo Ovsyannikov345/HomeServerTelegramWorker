@@ -2,6 +2,7 @@
 using HomeLabCore.Application.Telegram.CallbackQueryHandlers.Payloads;
 using HomeLabCore.Application.Telegram.Configuration;
 using HomeLabCore.Application.Telegram.Constants;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 
@@ -9,8 +10,9 @@ namespace HomeLabCore.Application.Telegram.CallbackQueryHandlers;
 
 internal sealed class EmptyQueryHandler(
     ITelegramBotClient telegramBotClient,
-    IOptionsSnapshot<TelegramSettings> options)
-    : CallbackQueryHandlerBase<RequestMediaPayload>(telegramBotClient, options)
+    IOptionsSnapshot<TelegramSettings> options,
+    ILogger<EmptyQueryHandler> logger)
+    : CallbackQueryHandlerBase<RequestMediaPayload>(telegramBotClient, options, logger)
 {
     protected override bool RequiresAuthorization => true;
 

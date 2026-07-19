@@ -1,5 +1,6 @@
 ﻿using HomeLabCore.Application.Telegram.CommandHandlers.Abstractions;
 using HomeLabCore.Application.Telegram.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -8,8 +9,9 @@ namespace HomeLabCore.Application.Telegram.CommandHandlers;
 
 internal sealed class StartCommandHandler(
     ITelegramBotClient telegramBotClient,
-    IOptionsSnapshot<TelegramSettings> options)
-    : CommandHandlerBase(telegramBotClient, options)
+    IOptionsSnapshot<TelegramSettings> options,
+    ILogger<StartCommandHandler> logger)
+    : CommandHandlerBase(telegramBotClient, options, logger)
 {
     public override CommandHandlerOptions HandlerOptions => new()
     {
