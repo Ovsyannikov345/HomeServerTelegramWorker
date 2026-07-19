@@ -20,7 +20,7 @@ internal sealed class SearchCommandHandler(
     IMessageRenderer messageRenderer,
     IOptionsSnapshot<TelegramSettings> options,
     ILogger<SearchCommandHandler> logger)
-    : CommandHandlerBase(telegramBotClient, options)
+    : CommandHandlerBase(telegramBotClient, options, logger)
 {
     private const int SearchResultsTotalCount = 20;
 
@@ -43,20 +43,7 @@ internal sealed class SearchCommandHandler(
 
         searchTerm = searchTerm.Trim();
 
-        // TODO proper logging
-        logger.LogInformation("Chat {ChatId} searching for: {Query}", message.Chat.Id, searchTerm);
-
-        List<ExternalMediaInfo> searchResults;
-
-        try
-        {
-            searchResults = await mediaManagerClient.Search(searchTerm, SearchResultsTotalCount, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            // TODO log here
-            throw new CommandProcessingException($"Can't search media: Seerr responded with failure", showToUser: true);
-        }
+        var searchResults = await mediaManagerClient.Search(searchTerm, SearchResultsTotalCount, ct);
 
         if (searchResults.Count == 0)
         {

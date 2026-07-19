@@ -86,4 +86,50 @@ internal static partial class ApplicationLogs
     public static partial void RequestedMedia(this ILogger logger, MediaType mediaType, int mediaId);
 
     #endregion
+
+    #region Command Handlers
+
+    [LoggerMessage(
+        EventId = 3_0002_0001,
+        Level = LogLevel.Warning,
+        Message = "Unauthorized access attempt by UserId {UserId} for command {CommandName}")]
+    public static partial void CommandAccessDenied(this ILogger logger, long? userId, string commandName);
+
+    [LoggerMessage(
+        EventId = 3_0002_0002,
+        Level = LogLevel.Information,
+        Message = "Starting to process a command with text {CommandText} from user {UserId} in chat {ChatId}")]
+    public static partial void CommandProcessingStarted(this ILogger logger, string? commandText, long? userId, long chatId);
+
+    [LoggerMessage(
+        EventId = 3_0002_0003,
+        Level = LogLevel.Information,
+        Message = "Command processed successfully")]
+    public static partial void CommandProcessingFinished(this ILogger logger);
+
+    [LoggerMessage(
+        EventId = 3_0002_0004,
+        Level = LogLevel.Warning,
+        Message = "Command processing failed. Reason: {Reason}")]
+    public static partial void CommandProcessingFailed(this ILogger logger, string reason);
+
+    [LoggerMessage(
+        EventId = 3_0002_0005,
+        Level = LogLevel.Error,
+        Message = "Command processing failed")]
+    public static partial void CommandProcessingFailed(this ILogger logger, Exception ex);
+
+    [LoggerMessage(
+        EventId = 3_0002_0006,
+        Level = LogLevel.Information,
+        Message = "Responded to command in ChatId {ChatId} with a new message")]
+    public static partial void RespondedToCommandWithNewMessage(this ILogger logger, long? chatId);
+
+    [LoggerMessage(
+        EventId = 3_0002_0007,
+        Level = LogLevel.Information,
+        Message = "Updated text for message {MessageId}")]
+    public static partial void UpdatedTextForMessage(this ILogger logger, long? messageId);
+
+    #endregion
 }
