@@ -10,8 +10,6 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    Log.Information("Configuring the application services...");
-
     builder.ConfigureApplication();
 
     Log.Information("Configuring request pipeline...");
@@ -41,5 +39,5 @@ catch (Exception ex) when (ex is not HostAbortedException)
 }
 finally
 {
-    Log.CloseAndFlush();
+    await Log.CloseAndFlushAsync();
 }

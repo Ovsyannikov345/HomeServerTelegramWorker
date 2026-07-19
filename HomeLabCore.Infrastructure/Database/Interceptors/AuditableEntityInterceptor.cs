@@ -60,12 +60,9 @@ public sealed class AuditableEntityInterceptor(ILogger<AuditableEntityIntercepto
                     logger.UpdatingEntity(entry.Entity.GetType().Name, string.Join(", ", modifiedProps));
                 }
             }
-            else if (entry.State is EntityState.Deleted)
+            else if (entry.State is EntityState.Deleted && logger.IsEnabled(LogLevel.Information))
             {
-                if (logger.IsEnabled(LogLevel.Information))
-                {
-                    logger.DeletingEntity(entry.Entity.GetType().Name);
-                }
+                logger.DeletingEntity(entry.Entity.GetType().Name);
             }
         }
     }

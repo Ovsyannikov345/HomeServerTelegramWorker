@@ -8,6 +8,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection ConfigureApplication(this WebApplicationBuilder applicationBuilder)
     {
+        Log.Information("Configuring the application services...");
+
         AddLogging(applicationBuilder);
 
         var configuration = applicationBuilder.Configuration;
